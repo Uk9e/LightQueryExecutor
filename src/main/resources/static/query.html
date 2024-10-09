@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LQE</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-shortkey/dist/vue-shortkey.umd.js"></script>
+    <style>
+        .container {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            justify-content: flex-end;
+        }
+        .grid {
+            font-family: "JetBrains Mono";
+            height: 60vh;
+            overflow-y: auto;
+            border: 1px solid #929da1;
+        }
+        .console {
+            padding: 20px;
+            height: 13vh;
+            margin-bottom: 20px;
+            border: 1px solid #929da1;
+        }
+        .input-container {
+            height: 22vh;
+        }
+        .sql-input {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            font-size: 25px;
+            font-family: "JetBrains Mono";
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="container">
+    <div class="input-container">
+        <el-input
+                v-model="sql"
+                :rows="4"
+                autofocus
+                class="sql-input"
+                type="textarea"
+        >
+        </el-input>
+    </div>
+    <div>
+        <el-row class="console">{{console}}</el-row>
+    </div>
+    <div class="grid">
+        <div v-if="grid">
+            <el-table :data="grid" :default-sort="{ prop: 'date', order: 'descending' }"
+                      highlight-current-row
+                      height="58vh"
+                      size="small"
+                      style="width: 100%"
+                      stripe
+            >
+                <el-table-column v-for="column in columns" :key="column.fieldName"
+                                 align="left"
+                                 :label="column.fieldName"
+                                 min-width="150px"
+                                 show-overflow-tooltip
+                                 :prop="column.fieldName">
+                </el-table-column>
+            </el-table>
+        </div>
+
+        <div v-else>
+            <el-empty description="暂无数据"></el-empty>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-1.8.3.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        const vm = new Vue({
+            el: '#app',
+            data() {
+                return {
+                    sql: '',
+                    grid: null,
+                    console: null,
+                    columns: [],
+                    loading: false,
+                };
+            },
+            methods: {
+                async executeSQL() {
+                    this.columns = []
+                    this.grid = null;
+                    if (!this.sql) {
+                        return;
+                    }
+                    this.grid = null
+                    this.loading = true;
+                    try {
+                        const res = await fetch(`api/query?sql=${encodeURIComponent(this.sql)}`);
+                        const data = await res.json();
+                        this.loading = false;
+                        if (data.error) {
+                            this.console = data.error
+                            this.$message.info(data.error);
+                        } else {
+                            this.columns = data.columns;
+                            this.grid = data.rows;
+                            this.console = null
+                        }
+                    } catch (error) {
+                        this.columns = []
+                        this.grid = null;
+                        this.loading = false;
+                        this.$message.error('执行查询时发生错误');
+                    }
+                }
+            }
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === "Enter" && event.ctrlKey || event.key === "F8") {
+                vm.executeSQL();
+            }
+        });
+    });
+</script>
+
+
+</body>
+</html>
